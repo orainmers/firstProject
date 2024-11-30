@@ -4,6 +4,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type Response struct {
@@ -26,7 +27,7 @@ func PostHandler(c echo.Context) error {
 	if err := c.Bind(&task); err != nil {
 		return c.JSON(http.StatusBadRequest, Response{
 			Status: "Error",
-			Detail: "Message not added",
+			Detail: "Could not add the message",
 		})
 	}
 	if err := DB.Create(&task).Error; err != nil {
@@ -35,9 +36,54 @@ func PostHandler(c echo.Context) error {
 			Detail: "Could not create the message",
 		})
 	}
+	return c.JSON(http.StatusOK, &task)
+}
+func PatchHandler(c echo.Context) error {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Response{
+			Status: "Error",
+			Detail: "Invalid ID",
+		})
+	}
+	var updatedTask Message
+	if err := c.Bind(&updatedTask); err != nil {
+		return c.JSON(http.StatusBadRequest, Response{
+			Status: "Error",
+			Detail: "Could not update the message",
+		})
+	}
+
+	if err := DB.Model(&Message{}).Where("id = ?", id).Update("task", updatedTask.Task).Error; err != nil {
+		return c.JSON(http.StatusBadRequest, Response{
+			Status: "Error",
+			Detail: "Could not update the message",
+		})
+	}
 	return c.JSON(http.StatusOK, Response{
 		Status: "Success",
-		Detail: "Message was successfully added",
+		Detail: "Message was successfully updated",
+	})
+}
+func DeleteHandler(c echo.Context) error {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, Response{
+			Status: "Error",
+			Detail: "Invalid ID",
+		})
+	}
+	if err := DB.Delete(&Message{}, id).Error; err != nil {
+		return c.JSON(http.StatusBadRequest, Response{
+			Status: "Error",
+			Detail: "Could not delete the message",
+		})
+	}
+	return c.JSON(http.StatusOK, Response{
+		Status: "Success",
+		Detail: "Message was successfully deleted",
 	})
 }
 
@@ -50,8 +96,10 @@ func main() {
 
 	c := echo.New()
 
-	c.GET("/api/hello", GetHandler)
-	c.POST("/api/hello", PostHandler)
+	c.GET("/api/messages", GetHandler)
+	c.POST("/api/messages", PostHandler)
+	c.PATCH("/api/messages/:id", PatchHandler)
+	c.DELETE("api/messages/:id", DeleteHandler)
 
 	if err := c.Start(":8080"); err != nil {
 		log.Fatalf("Не удалось запустить сервер: %v", err)
