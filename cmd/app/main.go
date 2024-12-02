@@ -1,8 +1,9 @@
 package main
 
 import (
+	"firstProject/internal/database"
+	"firstProject/internal/taskService"
 	"github.com/labstack/echo/v4"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -13,8 +14,8 @@ type Response struct {
 }
 
 func GetHandler(c echo.Context) error {
-	var messages []Message
-	if err := DB.Find(&messages).Error; err != nil {
+	var messages []taskService.Message
+	if err := database.DB.Find(&messages).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, Response{
 			Status: "Error",
 			Detail: "Could not find the messages",
@@ -23,14 +24,14 @@ func GetHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, &messages)
 }
 func PostHandler(c echo.Context) error {
-	var task Message
+	var task taskService.Message
 	if err := c.Bind(&task); err != nil {
 		return c.JSON(http.StatusBadRequest, Response{
 			Status: "Error",
 			Detail: "Could not add the message",
 		})
 	}
-	if err := DB.Create(&task).Error; err != nil {
+	if err := database.DB.Create(&task).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, Response{
 			Status: "Error",
 			Detail: "Could not create the message",
@@ -47,7 +48,7 @@ func PatchHandler(c echo.Context) error {
 			Detail: "Invalid ID",
 		})
 	}
-	var updatedTask Message
+	var updatedTask taskService.Message
 	if err := c.Bind(&updatedTask); err != nil {
 		return c.JSON(http.StatusBadRequest, Response{
 			Status: "Error",
@@ -55,16 +56,13 @@ func PatchHandler(c echo.Context) error {
 		})
 	}
 
-	if err := DB.Model(&Message{}).Where("id = ?", id).Update("task", updatedTask.Task).Error; err != nil {
+	if err := database.DB.Model(&taskService.Message{}).Where("id = ?", id).Update("task", updatedTask.Task).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, Response{
 			Status: "Error",
 			Detail: "Could not update the message",
 		})
 	}
-	return c.JSON(http.StatusOK, Response{
-		Status: "Success",
-		Detail: "Message was successfully updated",
-	})
+	return c.JSON(http.StatusOK, &updatedTask)
 }
 func DeleteHandler(c echo.Context) error {
 	idParam := c.Param("id")
@@ -75,33 +73,26 @@ func DeleteHandler(c echo.Context) error {
 			Detail: "Invalid ID",
 		})
 	}
-	if err := DB.Delete(&Message{}, id).Error; err != nil {
+	if err := database.DB.Delete(&taskService.Message{}, id).Error; err != nil {
 		return c.JSON(http.StatusBadRequest, Response{
 			Status: "Error",
 			Detail: "Could not delete the message",
 		})
 	}
-	return c.JSON(http.StatusOK, Response{
-		Status: "Success",
-		Detail: "Message was successfully deleted",
-	})
+	return c.NoContent(http.StatusNoContent)
 }
 
 func main() {
-	InitDB()
+	database.InitDB()
 
-	if err := DB.AutoMigrate(&Message{}); err != nil {
-		log.Fatalf("Не удалось мигрировать данные: %v", err)
-	}
+	database.DB.AutoMigrate(&taskService.Message{})
 
 	c := echo.New()
 
 	c.GET("/api/messages", GetHandler)
 	c.POST("/api/messages", PostHandler)
 	c.PATCH("/api/messages/:id", PatchHandler)
-	c.DELETE("api/messages/:id", DeleteHandler)
+	c.DELETE("/api/messages/:id", DeleteHandler)
 
-	if err := c.Start(":8080"); err != nil {
-		log.Fatalf("Не удалось запустить сервер: %v", err)
-	}
+	c.Start(":8080")
 }
