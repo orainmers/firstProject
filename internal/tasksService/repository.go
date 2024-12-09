@@ -1,4 +1,4 @@
-package taskService
+package tasksService
 
 import (
 	"gorm.io/gorm"
@@ -6,13 +6,9 @@ import (
 
 type TaskRepository interface {
 	GetAllTasks() ([]Task, error)
-	CreateTask(task *Task) error
-	UpdateTaskById(id uint, updatedTask *Task) error
+	CreateTask(task Task) (Task, error)
+	UpdateTaskById(id uint, updatedTask Task) (Task, error)
 	DeleteTaskById(id uint) error
-}
-type Response struct {
-	Status string `json:"status"`
-	Detail string `json:"detail"`
 }
 type taskRepository struct {
 	db *gorm.DB
@@ -29,12 +25,28 @@ func (r *taskRepository) GetAllTasks() ([]Task, error) {
 	return tasks, nil
 
 }
-func (r *taskRepository) CreateTask(task *Task) error {
-	return r.db.Create(&task).Error
+func (r *taskRepository) CreateTask(task Task) (Task, error) {
+	result := r.db.Create(&task)
+	if result.Error != nil {
+		return Task{}, result.Error
+	}
+	return task, nil
 }
-func (r *taskRepository) UpdateTaskById(id uint, updatedTask *Task) error {
-	return r.db.Model(&Task{}).Where("id = ?", id).Update("task", updatedTask.Task).Error
+func (r *taskRepository) UpdateTaskById(id uint, updatedTask Task) (Task, error) {
+	findByID := r.db.First(&updatedTask, id)
+	if findByID.Error != nil {
+		return updatedTask, findByID.Error
+	}
+	result := r.db.Model(&Task{}).Where("id = ?", id).Update("task", updatedTask.Task)
+	if result.Error != nil {
+		return Task{}, result.Error
+	}
+	return updatedTask, nil
 }
 func (r *taskRepository) DeleteTaskById(id uint) error {
+	var existingTask Task
+	if err := r.db.First(&existingTask, id).Error; err != nil {
+		return err
+	}
 	return r.db.Delete(&Task{}, id).Error
 }
