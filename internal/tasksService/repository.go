@@ -33,11 +33,12 @@ func (r *taskRepository) CreateTask(task Task) (Task, error) {
 	return task, nil
 }
 func (r *taskRepository) UpdateTaskById(id uint, updatedTask Task) (Task, error) {
-	findByID := r.db.First(&updatedTask, id)
+	findByID := r.db.First(&Task{}, id)
 	if findByID.Error != nil {
 		return updatedTask, findByID.Error
 	}
-	result := r.db.Model(&Task{}).Where("id = ?", id).Update("task", updatedTask.Task)
+	updatedTask.ID = id
+	result := r.db.Model(&updatedTask).Update("task", updatedTask.Task)
 	if result.Error != nil {
 		return Task{}, result.Error
 	}

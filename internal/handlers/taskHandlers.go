@@ -4,52 +4,25 @@ import (
 	"context"
 	"firstProject/internal/tasksService"
 	"firstProject/internal/web/tasks"
+	"gorm.io/gorm"
 )
 
 type TaskHandler struct {
 	Service *tasksService.TaskService
 }
 
-func NewHandler(service *tasksService.TaskService) *TaskHandler {
+func NewTaskHandler(service *tasksService.TaskService) *TaskHandler {
 	return &TaskHandler{
 		Service: service,
 	}
 }
 
-func (h *TaskHandler) DeleteTasksId(_ context.Context, request tasks.DeleteTasksIdRequestObject) (tasks.DeleteTasksIdResponseObject, error) {
-	taskID := uint(request.Id)
-	if err := h.Service.DeleteTaskById(taskID); err != nil {
-		return nil, err
-	}
-	return tasks.DeleteTasksId204JSONResponse{}, nil
-}
-
-func (h *TaskHandler) PatchTasksId(_ context.Context, request tasks.PatchTasksIdRequestObject) (tasks.PatchTasksIdResponseObject, error) {
-	taskID := uint(request.Id)
-	taskRequest := request.Body
-	taskToUpdate := tasksService.Task{
-		Task:   *taskRequest.Task,
-		IsDone: *taskRequest.IsDone,
-	}
-	updatedTask, err := h.Service.UpdateTaskById(taskID, taskToUpdate)
+func (t *TaskHandler) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject) (tasks.GetTasksResponseObject, error) {
+	allTasks, err := t.Service.GetAllTasks()
 	if err != nil {
 		return nil, err
 	}
-	updatedTask.ID = taskID
-	response := tasks.PatchTasksId201JSONResponse{
-		Id:     &updatedTask.ID,
-		IsDone: &updatedTask.IsDone,
-		Task:   &updatedTask.Task,
-	}
-	return response, nil
-}
-
-func (h *TaskHandler) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject) (tasks.GetTasksResponseObject, error) {
-	allTasks, err := h.Service.GetAllTasks()
-	if err != nil {
-		return nil, err
-	}
-	response := tasks.GetTasks200JSONResponse{}
+	var response tasks.GetTasks200JSONResponse
 	for _, tsk := range allTasks {
 		task := tasks.Task{
 			Id:     &tsk.ID,
@@ -61,13 +34,13 @@ func (h *TaskHandler) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject)
 	return response, nil
 }
 
-func (h *TaskHandler) PostTasks(_ context.Context, request tasks.PostTasksRequestObject) (tasks.PostTasksResponseObject, error) {
+func (t *TaskHandler) PostTasks(_ context.Context, request tasks.PostTasksRequestObject) (tasks.PostTasksResponseObject, error) {
 	taskRequest := request.Body
 	taskToCreate := tasksService.Task{
 		Task:   *taskRequest.Task,
 		IsDone: *taskRequest.IsDone,
 	}
-	createdTask, err := h.Service.CreateTask(taskToCreate)
+	createdTask, err := t.Service.CreateTask(taskToCreate)
 	if err != nil {
 		return nil, err
 	}
@@ -78,4 +51,33 @@ func (h *TaskHandler) PostTasks(_ context.Context, request tasks.PostTasksReques
 		IsDone: &createdTask.IsDone,
 	}
 	return response, nil
+}
+
+func (t *TaskHandler) PatchTasksId(_ context.Context, request tasks.PatchTasksIdRequestObject) (tasks.PatchTasksIdResponseObject, error) {
+	taskID := uint(request.Id)
+	taskRequest := request.Body
+	taskToUpdate := tasksService.Task{
+		Model:  gorm.Model{ID: taskID},
+		Task:   *taskRequest.Task,
+		IsDone: *taskRequest.IsDone,
+	}
+	updatedTask, err := t.Service.UpdateTaskById(taskID, taskToUpdate)
+	if err != nil {
+		return nil, err
+	}
+	updatedTask.ID = taskID
+	response := tasks.PatchTasksId200JSONResponse{
+		Id:     &updatedTask.ID,
+		IsDone: &updatedTask.IsDone,
+		Task:   &updatedTask.Task,
+	}
+	return response, nil
+}
+
+func (t *TaskHandler) DeleteTasksId(_ context.Context, request tasks.DeleteTasksIdRequestObject) (tasks.DeleteTasksIdResponseObject, error) {
+	taskID := request.Id
+	if err := t.Service.DeleteTaskById(uint(taskID)); err != nil {
+		return nil, err
+	}
+	return tasks.DeleteTasksId204JSONResponse{}, nil
 }

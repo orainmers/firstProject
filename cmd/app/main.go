@@ -4,7 +4,9 @@ import (
 	"firstProject/internal/database"
 	"firstProject/internal/handlers"
 	"firstProject/internal/tasksService"
+	"firstProject/internal/userService"
 	"firstProject/internal/web/tasks"
+	"firstProject/internal/web/users"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"log"
@@ -13,22 +15,31 @@ import (
 func main() {
 	database.InitDB()
 	if err := database.DB.AutoMigrate(&tasksService.Task{}); err != nil {
-		log.Fatalf("Faild to migrate data: %v", err)
+		log.Fatalf("Faild to migrate Task data: %v", err)
+	}
+	if err := database.DB.AutoMigrate(&userService.User{}); err != nil {
+		log.Fatalf("Faild to migrate User data: %v", err)
 	}
 
-	repo := tasksService.NewTaskRepository(database.DB)
-	service := tasksService.NewService(repo)
-	handler := handlers.NewHandler(service)
+	repoTasks := tasksService.NewTaskRepository(database.DB)
+	serviceTasks := tasksService.NewTaskService(repoTasks)
+	handlerTasks := handlers.NewTaskHandler(serviceTasks)
+
+	repoUsers := userService.NewUserRepository(database.DB)
+	serviceUsers := userService.NewUserService(repoUsers)
+	handlerUsers := handlers.NewUserHandler(serviceUsers)
 
 	e := echo.New()
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	strictHandler := tasks.NewStrictHandler(handler, nil)
-	tasks.RegisterHandlers(e, strictHandler)
+	taskHandler := tasks.NewStrictHandler(handlerTasks, nil)
+	tasks.RegisterHandlers(e, taskHandler)
+	userHandler := users.NewStrictHandler(handlerUsers, nil)
+	users.RegisterHandlers(e, userHandler)
 
-	if err := e.Start(":8080"); err != nil {
+	if err := e.Start(":8081"); err != nil {
 		log.Fatalf("Failed to start the server with err: %v", err)
 	}
 }
