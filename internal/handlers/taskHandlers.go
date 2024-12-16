@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"firstProject/internal/models"
 	"firstProject/internal/tasksService"
 	"firstProject/internal/web/tasks"
 	"gorm.io/gorm"
@@ -28,6 +29,7 @@ func (t *TaskHandler) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject)
 			Id:     &tsk.ID,
 			IsDone: &tsk.IsDone,
 			Task:   &tsk.Task,
+			UserId: &tsk.UserID,
 		}
 		response = append(response, task)
 	}
@@ -36,9 +38,10 @@ func (t *TaskHandler) GetTasks(_ context.Context, _ tasks.GetTasksRequestObject)
 
 func (t *TaskHandler) PostTasks(_ context.Context, request tasks.PostTasksRequestObject) (tasks.PostTasksResponseObject, error) {
 	taskRequest := request.Body
-	taskToCreate := tasksService.Task{
+	taskToCreate := models.Task{
 		Task:   *taskRequest.Task,
 		IsDone: *taskRequest.IsDone,
+		UserID: *taskRequest.UserId,
 	}
 	createdTask, err := t.Service.CreateTask(taskToCreate)
 	if err != nil {
@@ -49,6 +52,7 @@ func (t *TaskHandler) PostTasks(_ context.Context, request tasks.PostTasksReques
 		Task:   &createdTask.Task,
 		Id:     &createdTask.ID,
 		IsDone: &createdTask.IsDone,
+		UserId: &createdTask.UserID,
 	}
 	return response, nil
 }
@@ -56,7 +60,7 @@ func (t *TaskHandler) PostTasks(_ context.Context, request tasks.PostTasksReques
 func (t *TaskHandler) PatchTasksId(_ context.Context, request tasks.PatchTasksIdRequestObject) (tasks.PatchTasksIdResponseObject, error) {
 	taskID := uint(request.Id)
 	taskRequest := request.Body
-	taskToUpdate := tasksService.Task{
+	taskToUpdate := models.Task{
 		Model:  gorm.Model{ID: taskID},
 		Task:   *taskRequest.Task,
 		IsDone: *taskRequest.IsDone,
@@ -80,4 +84,44 @@ func (t *TaskHandler) DeleteTasksId(_ context.Context, request tasks.DeleteTasks
 		return nil, err
 	}
 	return tasks.DeleteTasksId204JSONResponse{}, nil
+}
+func (t *TaskHandler) GetTasksUserId(_ context.Context, request tasks.GetTasksUserIdRequestObject) (tasks.GetTasksUserIdResponseObject, error) {
+	userID := request.UserId
+	userTasks, err := t.Service.GetTasksByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	response := tasks.GetTasksUserId200JSONResponse{}
+	for _, task := range userTasks {
+		tsk := tasks.Task{
+			Id:     &task.ID,
+			Task:   &task.Task,
+			IsDone: &task.IsDone,
+			UserId: &task.UserID,
+		}
+		response = append(response, tsk)
+	}
+	return response, nil
+}
+func (t *TaskHandler) GetUsersUserIdTasks(_ context.Context, request tasks.GetUsersUserIdTasksRequestObject) (tasks.GetUsersUserIdTasksResponseObject, error) {
+	userID := request.UserId
+	userTasks, err := t.Service.GetTasksByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	response := tasks.GetUsersUserIdTasks200JSONResponse{}
+
+	for _, tsk := range userTasks {
+		task := tasks.Task{
+			Id:     &tsk.ID,
+			Task:   &tsk.Task,
+			IsDone: &tsk.IsDone,
+			UserId: &tsk.UserID,
+		}
+		response = append(response, task)
+	}
+
+	return response, nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"firstProject/internal/database"
 	"firstProject/internal/handlers"
+	"firstProject/internal/models"
 	"firstProject/internal/tasksService"
 	"firstProject/internal/userService"
 	"firstProject/internal/web/tasks"
@@ -14,10 +15,10 @@ import (
 
 func main() {
 	database.InitDB()
-	if err := database.DB.AutoMigrate(&tasksService.Task{}); err != nil {
+	if err := database.DB.AutoMigrate(&models.Task{}); err != nil {
 		log.Fatalf("Faild to migrate Task data: %v", err)
 	}
-	if err := database.DB.AutoMigrate(&userService.User{}); err != nil {
+	if err := database.DB.AutoMigrate(&models.User{}); err != nil {
 		log.Fatalf("Faild to migrate User data: %v", err)
 	}
 

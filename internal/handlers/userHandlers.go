@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"firstProject/internal/models"
 	"firstProject/internal/userService"
 	"firstProject/internal/web/users"
 	"gorm.io/gorm"
@@ -36,7 +37,7 @@ func (u *UserHandler) GetUsers(_ context.Context, _ users.GetUsersRequestObject)
 
 func (u *UserHandler) PostUsers(_ context.Context, request users.PostUsersRequestObject) (users.PostUsersResponseObject, error) {
 	userRequest := request.Body
-	userToCreate := userService.User{
+	userToCreate := models.User{
 		Email:    *userRequest.Email,
 		Password: *userRequest.Password,
 	}
@@ -56,7 +57,7 @@ func (u *UserHandler) PostUsers(_ context.Context, request users.PostUsersReques
 func (u *UserHandler) PatchUsersId(_ context.Context, request users.PatchUsersIdRequestObject) (users.PatchUsersIdResponseObject, error) {
 	userID := uint(request.Id)
 	userRequest := request.Body
-	userToUpdate := userService.User{
+	userToUpdate := models.User{
 		Model:    gorm.Model{ID: userID},
 		Email:    *userRequest.Email,
 		Password: *userRequest.Password,
